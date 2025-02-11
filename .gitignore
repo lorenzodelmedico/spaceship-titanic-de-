@@ -177,3 +177,7 @@ cython_debug/
 
 #json key
 key_sa_titanic*
+
+#pickle files
+*.pkl
+
