@@ -1,89 +1,103 @@
 import os
-from google.cloud import bigquery
+from google.cloud import bigquery, storage
 from dotenv import load_dotenv
 
 class BqAnalysis:
-    def __init__(self, key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS", bucket_name="titanic_model_2025_02_07", project_id="fleet-petal-448410-u6"):
+    def __init__(self, key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS", project_id="fleet-petal-448410-u6"):
         """
-        Initialize the BqAnalysis class with the Google Cloud credentials.
+        Initialize the BqAnalysis class with credentials, BigQuery client, and Storage client.
 
-        :param key_path_env_var: str, the environment variable name containing the service account key path.
+        :param key_path_env_var: Environment variable name that stores the service account key path.
+        :param project_id: GCP project ID.
         """
-        self.key_path = self._get_key_path(key_path_env_var)
-        self.bucket_name = bucket_name
-        self.client = bigquery.Client(project_id)
-    
-    def _get_key_path(self, key_path_env_var):
+        self._load_credentials(key_path_env_var)
+        self.project_id = project_id
+        self.bq_client = bigquery.Client(project=project_id)
+        self.storage_client = storage.Client()
+
+    def _load_credentials(self, key_path_env_var):
         """
-        Get the service account key path. Check system environment first; if not found, load from .env file.
-        
-        :param key_path_env_var: str, environment variable name for the key path.
-        :return: str, the path to the service account key.
+        Load the service account key from an environment variable or a .env file.
         """
+        load_dotenv()  # Load .env file if available
         key_path = os.getenv(key_path_env_var)
-        if not key_path:
-            load_dotenv()  # Load .env if key is not in system environment
-            key_path = os.getenv(key_path_env_var)
-        
-        if not key_path:
+        if not key_path or not os.path.exists(key_path):
             raise EnvironmentError(f"Service account key not found in environment variable '{key_path_env_var}' or .env file.")
-        
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
         print(f"Using service account key from: {key_path}")
-        return key_path
 
     def list_datasets(self):
-        """List all datasets in the project."""
-        datasets = list(self.client.list_datasets())
+        """
+        List all datasets in the project.
+        """
+        datasets = list(self.bq_client.list_datasets())
         if datasets:
             print("\nDatasets in the project:")
             for dataset in datasets:
                 print(f"  - {dataset.dataset_id}")
         else:
-            print("\nNo datasets found.")
+            print("No datasets found.")
 
-    def list_tables(self, dataset_id: str):
+    def list_tables(self, dataset_id):
         """
-        List all tables in a specified dataset.
-
-        :param dataset_id: str, the dataset to list tables from.
+        List all tables in the specified dataset.
+        
+        :param dataset_id: Name of the dataset.
         """
-        tables = list(self.client.list_tables(dataset_id))
+        tables = list(self.bq_client.list_tables(dataset_id))
         if tables:
-            print(f"\nTables in dataset {dataset_id}:")
+            print(f"\nTables in dataset '{dataset_id}':")
             for table in tables:
                 print(f"  - {table.table_id}")
         else:
-            print(f"\nNo tables found in dataset {dataset_id}.")
+            print(f"No tables found in dataset '{dataset_id}'.")
 
-    def get_table_info(self, dataset_id: str, table_id: str):
+    def get_table_info(self, dataset_id, table_id):
         """
-        Get detailed information about a table, including row count, size, and schema.
-
-        :param dataset_id: str, dataset containing the table.
-        :param table_id: str, table to get information about.
+        Get detailed information about a specific table.
+        
+        :param dataset_id: Name of the dataset.
+        :param table_id: Name of the table.
         """
-        table_ref = self.client.dataset(dataset_id).table(table_id)
-        table = self.client.get_table(table_ref)
-
+        table_ref = self.bq_client.dataset(dataset_id).table(table_id)
+        table = self.bq_client.get_table(table_ref)
         print(f"\nTable: {dataset_id}.{table_id}")
         print(f"  - Number of rows: {table.num_rows}")
         print(f"  - Size: {table.num_bytes / (1024 ** 2):.2f} MB")
         print("  - Schema:")
-        for schema_field in table.schema:
-            print(f"    - {schema_field.name} ({schema_field.field_type})")
+        for field in table.schema:
+            print(f"    - {field.name} ({field.field_type})")
+
+    def list_pkl_files_in_bucket(self, bucket_name):
+        """
+        List all .pkl files saved in the specified GCS bucket.
+        
+        :param bucket_name: Name of the GCS bucket.
+        """
+        bucket = self.storage_client.bucket(bucket_name)
+        blobs = list(bucket.list_blobs())
+        pkl_files = [blob.name for blob in blobs if blob.name.endswith(".pkl")]
+        if pkl_files:
+            print(f"\nList of .pkl files in bucket '{bucket_name}':")
+            for file in pkl_files:
+                print(f"  - {file}")
+        else:
+            print(f"\nNo .pkl files found in bucket '{bucket_name}'.")
 
 if __name__ == "__main__":
-    # Initialize the class with the environment variable name where the key path is stored
-    bq_analysis = BqAnalysis()
+    # Initialize the BqAnalysis class (ensure your .env or system environment has the GCP_KEY_PATH variable)
+    analysis = BqAnalysis(key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS")
     
-    # List all datasets
-    bq_analysis.list_datasets()
+    # List datasets
+    analysis.list_datasets()
     
     # List tables in a specific dataset
-    dataset_id = "titanic_dataset"  # Replace with your dataset name
-    bq_analysis.list_tables(dataset_id)
+    dataset = "titanic_dataset"
+    analysis.list_tables(dataset)
     
     # Get information about a specific table
-    table_id = "RAW_train_data"  # Replace with your table name
-    bq_analysis.get_table_info(dataset_id, table_id)
+    analysis.get_table_info(dataset, "RAW_train_data")
+    
+    # List .pkl files in a specified bucket (for example, where model files are saved)
+    bucket = "titanic_model_2025_02_07"
+    analysis.list_pkl_files_in_bucket(bucket)
