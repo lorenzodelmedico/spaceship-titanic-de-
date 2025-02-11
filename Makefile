@@ -18,10 +18,10 @@ init_virtualenv :
 	@pyenv local titanic-env
 	@echo "✅ Virtualenv 'titanic-env' activated"
 
-load_direnv:
-	@echo "Loading direnv ..."
-	@direnv allow
-	@echo "✅ Direnv loaded"
+# load_direnv:
+# 	@echo "Loading direnv ..."
+# 	@direnv allow
+# 	@echo "✅ Direnv loaded"
 
 precommit_install:
 	@echo "Installing pre-commit hooks ..."
