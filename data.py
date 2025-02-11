@@ -37,7 +37,7 @@ this function use the loaded dataframe to preprocess data and save preprocessing
 If the preprocessing is already saved it loads the file from GCS, otherwise it upload a new file to GCS
 It returns a tuple with X preprocessed and the target y
 """
-def preproc_data(df) -> tuple:
+def preproc_data(df, training=True):
 
     bucket_name = "titanic_model_2025_02_07"
     object_name = "preprocessor.pkl"
@@ -47,7 +47,12 @@ def preproc_data(df) -> tuple:
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(object_name)
 
-    X, y = df.drop('Transported', axis=1), df['Transported']
+    drop_cols = ["PassengerId", "Name", "Cabin"]
+    # Separate features and target only during training
+    if training:
+        X, y = df.drop('Transported', axis=1), df['Transported']
+    else:
+        X = df  # No target variable during prediction
 
     #writting the blob only if it doesn't exist
     if blob.exists() == False:
@@ -64,14 +69,13 @@ def preproc_data(df) -> tuple:
                     "imputation_mode",
                     SimpleImputer(missing_values=pd.NA,fill_value="missing", strategy="most_frequent"),
                 ),
-                ("onehot", OneHotEncoder(handle_unknown="error")),
+                ("onehot", OneHotEncoder(handle_unknown="ignore")),
             ]
         )
 
         num_cols = X.select_dtypes(include='number').columns
         cat_cols = X.select_dtypes(include=['object', 'boolean']).columns
         # Columns to be dropped
-        drop_cols = ["PassengerId", "Name", "Cabin"]
 
         preprocessor = ColumnTransformer(
             [
@@ -80,6 +84,8 @@ def preproc_data(df) -> tuple:
                 ("drop_cols", "drop", drop_cols)
             ]
         )
+
+        preprocessor.fit(X)
 
         with open("preprocessor.pkl", "wb") as f:
             pickle.dump(preprocessor, f)
@@ -93,11 +99,15 @@ def preproc_data(df) -> tuple:
         with open(local_file, "rb") as f:
             preprocessor = pickle.load(f)
         print(f'preprocessor loaded localy from GS: {bucket_name}/{object_name}')
-
-
-    X_processed = preprocessor.fit_transform(X) 
-    print(f'X processed and y separated ✅ ') 
-    return X_processed, y 
+    # Ensure missing columns (those in drop_cols) are in the input data
+    missing_cols = set(drop_cols) - set(X.columns)
+    for col in missing_cols:
+        X[col] = None
+    #Here we use fit_transform for training (when we want to keep mean, std and mode parameters)
+    #Otherwise we want to use transform when it is just for preprocessing datas
+    X_processed = preprocessor.fit_transform(X) if training else preprocessor.transform(X)
+    print('X processed and y separated ✅') if training else print('X processed ✅')
+    return (X_processed, y) if training else X_processed
 
 if __name__ == "__main__":
     df = load_data(key_path= "./.env/key_sa_titanic_Hugo.json", table_name = 'RAW_train_data')
