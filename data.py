@@ -7,10 +7,9 @@ from google.cloud import bigquery, storage
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
 from sklearn.model_selection import train_test_split
-from sklearn.compose import make_column_transformer, make_column_selector
+from sklearn.compose import make_column_transformer
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression
 import numpy as np
 
 
