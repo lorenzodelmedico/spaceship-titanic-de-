@@ -25,10 +25,10 @@ def load_credentials(key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS"):
     print(f"Using service account key from: {key_path}")
     
 # This function loads datas from the raw table in big query
-def load_data(key_path, table_name) -> pd.DataFrame:
-    load_credentials(key_path)
-    project_id = 'fleet-petal-448410-u6'
-    dataset_id = "titanic_dataset"
+def load_data(table_name) -> pd.DataFrame:
+    load_credentials()
+    project_id = os.getenv('GCP_PROJECT_ID')
+    dataset_id = os.getenv('BQ_DATASET')
     table = table_name
 
     client = bigquery.Client(project=project_id)
@@ -43,14 +43,15 @@ def load_data(key_path, table_name) -> pd.DataFrame:
         return df
     else: print(f'❌ No data in table {table}')
 
-"""
-this function use the loaded dataframe to preprocess data and save preprocessing to GCS if not already saved
-If the preprocessing is already saved it loads the file from GCS, otherwise it upload a new file to GCS
-It returns a tuple with X preprocessed and the target y
-"""
-def preproc_data(df, training=True):
 
-    bucket_name = "titanic_model_2025_02_07"
+def preproc_data(df, training=True):
+    """
+    this function use the loaded dataframe to preprocess data and save preprocessing to GCS if not already saved
+    If the preprocessing is already saved it loads the file from GCS, otherwise it upload a new file to GCS
+    It returns a tuple with X preprocessed and the target y
+    """
+    load_dotenv()
+    bucket_name = os.getenv('GCP_BUCKET')
     object_name = "preprocessor.pkl"
     local_file = "preprocessor.pkl"
 
@@ -121,6 +122,5 @@ def preproc_data(df, training=True):
     return (X_processed, y) if training else X_processed
 
 if __name__ == "__main__":
-    df = load_data(key_path="GOOGLE_APPLICATION_CREDENTIALS", table_name = 'RAW_train_data')
+    df = load_data(table_name = 'RAW_train_data')
     X_processed, y = preproc_data(df)
-
