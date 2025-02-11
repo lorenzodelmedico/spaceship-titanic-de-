@@ -169,15 +169,3 @@ class ModelTrainer:
         accuracy = self.model.score(X_test, y_test)
         print(f"Model {self.model_config.name} trained with test accuracy: {accuracy}")
         return self.model
-
-# --- Example usage ---
-# Suppose you want to select a model based on a parameter (e.g., 'lr' for logistic regression).
-selected_model_code = "lr"
-model_config = ModelConfig(MODELS[selected_model_code])
-
-# Optionally, update parameters (for instance, if you want to experiment with a lower C)
-# model_config.update_parameters({"C": 0.5, "max_iter": 300})
-
-#Create a trainer and run the training process.
-trainer = ModelTrainer(model_config)
-trained_model = trainer.train_model(X, y)

@@ -1,12 +1,8 @@
 import os
 import pickle
-import pandas as pd
 from google.cloud import bigquery, storage
-from sklearn.model_selection import train_test_split
-from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import make_pipeline
 from dotenv import load_dotenv
-from modelconfig import MODELS, ModelConfig, ModelTrainer
+from .modelconfig import MODELS, ModelConfig, ModelTrainer
 
 class Training:
     def __init__(
@@ -71,7 +67,7 @@ class Training:
         
         :param X: Features DataFrame.
         :param y: Target Series.
-        :param model_key: The key used to select the model configuration (default 'lr').
+        :param model_key: The key used to select the model configuration (default 'rf').
         :return: The trained model pipeline.
         """
         # Create the model configuration based on the provided model_key.
@@ -86,45 +82,46 @@ class Training:
         
         return self.model
 
-    def save_model(self, base_model_name="model.pkl"):
+    def save_model(self, model_key="rf"):
         """
         Save the trained model to GCS with versioning.
         
-        The versioning scheme:
-          - If no model exists, save as "model.pkl".
-          - If "model.pkl" exists (and no versioned file), save the new model as "model.v01.pkl".
-          - Otherwise, if versioned files exist (e.g. model.v01.pkl), the new model will be named with an incremented version.
+        The versioning scheme for a given model key:
+          - If no model exists, save as "model_{model_key}.pkl".
+          - If "model_{model_key}.pkl" exists, then save the new model as "model_{model_key}.v01.pkl".
+          - Otherwise, if versioned files exist (e.g., model_{model_key}.v01.pkl), the new model
+            will be named with an incremented version.
         
-        :param base_model_name: Base name for the model file.
+        :param model_key: A string identifier for the model (e.g., "rf").
+        :return: The new model file name.
         """
         if self.model is None:
             raise ValueError("No trained model found. Train a model before saving.")
 
         bucket = self.storage_client.bucket(self.bucket_name)
-        blobs = list(bucket.list_blobs(prefix="model"))
+        # Only list files that start with the expected prefix.
+        blobs = list(bucket.list_blobs(prefix=f"model_{model_key}"))
         version_numbers = []
 
+        base_filename = f"model_{model_key}.pkl"
         # Check existing model files
         for blob in blobs:
             name = blob.name
-            if name == "model.pkl":
+            if name == base_filename:
                 version_numbers.append(0)
-            elif name.startswith("model.v") and name.endswith(".pkl"):
+            elif name.startswith(f"model_{model_key}.v") and name.endswith(".pkl"):
                 try:
-                    version_str = name[len("model.v") : -len(".pkl")]
+                    version_str = name[len(f"model_{model_key}.v") : -len(".pkl")]
                     version_numbers.append(int(version_str))
                 except ValueError:
                     pass
 
         # Decide on the new file name
         if not version_numbers:
-            # No existing model, save as "model.pkl"
-            new_model_name = "model.pkl"
+            new_model_name = base_filename
         else:
-            # There is at least one model file.
-            # If only model.pkl exists (i.e. version 0), start with version 1.
             new_version = max(version_numbers) + 1
-            new_model_name = f"model.v{new_version:02d}.pkl"
+            new_model_name = f"model_{model_key}.v{new_version:02d}.pkl"
         
         # Save locally
         local_file = new_model_name
@@ -136,32 +133,40 @@ class Training:
         print(f"Model uploaded to gs://{self.bucket_name}/{new_model_name}")
         return new_model_name
 
-    def load_model(self):
+    def load_model(self, model_key="rf"):
         """
-        Load the most recent model from GCS.
-        
-        It checks for the model files (base and versioned) and returns the one with the highest version.
-        
-        :return: The loaded model or None if no model is found.
+        Load the most recent model corresponding to the given model_key from GCS.
+
+        It looks for model files that include the model_key in their filename and
+        returns the one with the highest version.
+
+        Expected filename patterns:
+          - Base file: "model_{model_key}.pkl" (version 0)
+          - Versioned file: "model_{model_key}.v{version_number:02d}.pkl"
+
+        :param model_key: A string identifier for the model (e.g., "rf").
+        :return: The loaded model, or None if no matching model is found.
         """
         bucket = self.storage_client.bucket(self.bucket_name)
-        blobs = list(bucket.list_blobs(prefix="model"))
+        blobs = list(bucket.list_blobs(prefix=f"model_{model_key}"))
+
         if not blobs:
             print("No model files found in GCS.")
             return None
 
-        # Determine the highest version
         latest_version = -1
         latest_blob_name = None
+        base_filename = f"model_{model_key}.pkl"
+
         for blob in blobs:
             name = blob.name
-            if name == "model.pkl":
+            if name == base_filename:
                 if latest_version < 0:
                     latest_version = 0
                     latest_blob_name = name
-            elif name.startswith("model.v") and name.endswith(".pkl"):
+            elif name.startswith(f"model_{model_key}.v") and name.endswith(".pkl"):
                 try:
-                    version_str = name[len("model.v") : -len(".pkl")]
+                    version_str = name[len(f"model_{model_key}.v") : -len(".pkl")]
                     version_num = int(version_str)
                     if version_num > latest_version:
                         latest_version = version_num
@@ -170,7 +175,7 @@ class Training:
                     pass
 
         if latest_blob_name is None:
-            print("No valid model file found in GCS.")
+            print(f"No valid model file found in GCS for model '{model_key}'.")
             return None
 
         # Download and load the latest model
@@ -187,12 +192,12 @@ if __name__ == "__main__":
     
     # Query preprocessed data from BigQuery
     X, y = trainer.get_preprocessed_data()
-    train_model_name = "rf"
+    train_model_key = "rf"
     if not X.empty:
         # Train the model using the queried data
-        trainer.train_model(X, y, train_model_name)
-        # Save the model with versioning
-        new_model_name = trainer.save_model()
-        print(f"Model saved as: {new_model_name}_{train_model_name}")
-        # Load the most recent model
-        loaded_model = trainer.load_model()
+        trainer.train_model(X, y, train_model_key)
+        # Save the model with versioning using the model key
+        new_model_name = trainer.save_model(model_key=train_model_key)
+        print(f"Model saved as: {new_model_name}")
+        # Load the most recent model for the given model key
+        loaded_model = trainer.load_model(model_key=train_model_key)
