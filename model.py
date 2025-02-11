@@ -57,7 +57,7 @@ def load_model(GCS_model_name):
     
 
 if __name__ == "__main__":
-    df = load_data(key_path= "./.env/key_sa_titanic_Hugo.json", table_name = 'RAW_train_data')
+    df = load_data(key_path= "GOOGLE_APPLICATION_CREDENTIALS", table_name = 'RAW_train_data')
     X_processed, y = preproc_data(df)
     trained_model = train_model(X_processed,y)
     save_model(trained_model)

@@ -11,11 +11,22 @@ from sklearn.compose import make_column_transformer
 from sklearn.pipeline import Pipeline, make_pipeline
 from sklearn.impute import SimpleImputer
 import numpy as np
+from dotenv import load_dotenv
 
-
+def load_credentials(key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS"):
+    """
+    Load the service account key from an environment variable or a .env file.
+    """
+    load_dotenv()  # Load .env file if available
+    key_path = os.getenv(key_path_env_var)
+    if not key_path or not os.path.exists(key_path):
+        raise EnvironmentError(f"Service account key not found in environment variable '{key_path_env_var}' or .env file.")
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
+    print(f"Using service account key from: {key_path}")
+    
 # This function loads datas from the raw table in big query
 def load_data(key_path, table_name) -> pd.DataFrame:
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
+    load_credentials(key_path)
     project_id = 'fleet-petal-448410-u6'
     dataset_id = "titanic_dataset"
     table = table_name
@@ -100,6 +111,6 @@ def preproc_data(df) -> tuple:
     return X_processed, y 
 
 if __name__ == "__main__":
-    df = load_data(key_path= "./.env/key_sa_titanic_Hugo.json", table_name = 'RAW_train_data')
+    df = load_data(key_path="GOOGLE_APPLICATION_CREDENTIALS", table_name = 'RAW_train_data')
     X_processed, y = preproc_data(df)
 
