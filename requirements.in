@@ -1,3 +1,17 @@
 # Encoding categorical data wHashingEncoder for BQ saving
 category_encoders
 
+# Data Science
+pandas
+scikit-learn
+# Cloud
+google-cloud-bigquery-storage
+google-cloud-bigquery
+google-cloud-storage
+db-dtypes
+
+# Notebook
+notebook
+
+# Linting and Formatting
+pre-commit

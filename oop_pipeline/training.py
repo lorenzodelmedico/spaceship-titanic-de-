@@ -6,6 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from dotenv import load_dotenv
+from modelconfig import MODELS, ModelConfig, ModelTrainer
 
 class Training:
     def __init__(
@@ -63,19 +64,26 @@ class Training:
         y = df["Transported"]
         return X, y
 
-    def train_model(self, X, y):
+    def train_model(self, X, y, model_key="rf"):
         """
-        Split the data, train a logistic regression model, and report accuracy.
+        Split the data, instantiate the model configuration and trainer,
+        train the model, and report accuracy.
         
         :param X: Features DataFrame.
         :param y: Target Series.
-        :return: The trained model.
+        :param model_key: The key used to select the model configuration (default 'lr').
+        :return: The trained model pipeline.
         """
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
-        self.model = make_pipeline(LogisticRegression(random_state=42, max_iter=500))
-        self.model.fit(X_train, y_train)
-        accuracy = self.model.score(X_test, y_test)
-        print(f"Model trained with test accuracy: {accuracy}")
+        # Create the model configuration based on the provided model_key.
+        model_config = ModelConfig(MODELS[model_key])
+        
+        # Instantiate the trainer using the configuration.
+        trainer = ModelTrainer(model_config)
+        
+        # Train the model. Note: ModelTrainer.train_model() internally splits the data,
+        # trains the pipeline, and prints accuracy.
+        self.model = trainer.train_model(X, y)
+        
         return self.model
 
     def save_model(self, base_model_name="model.pkl"):
