@@ -187,12 +187,12 @@ if __name__ == "__main__":
     
     # Query preprocessed data from BigQuery
     X, y = trainer.get_preprocessed_data()
-    
+    train_model_name = "rf"
     if not X.empty:
         # Train the model using the queried data
-        trainer.train_model(X, y)
+        trainer.train_model(X, y, train_model_name)
         # Save the model with versioning
         new_model_name = trainer.save_model()
-        print(f"Model saved as: {new_model_name}")
+        print(f"Model saved as: {new_model_name}_{train_model_name}")
         # Load the most recent model
         loaded_model = trainer.load_model()
