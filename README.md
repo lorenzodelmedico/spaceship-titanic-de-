@@ -20,7 +20,18 @@ make init_env
 ## Running the pipeline
 
 To run the pipeline you can use the following command:
+First and second CMD are there to process and train, third to check what is been uploaded to BQ.
+1.
+```bash
+make preprocess
+```
 
+2.
 ```bash
 make train
+```
+
+3 (option).
+```bash
+make analysis
 ```
