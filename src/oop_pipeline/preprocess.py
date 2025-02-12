@@ -15,43 +15,43 @@ class Preprocess:
     def __init__(
         self,
         key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS",
-        bucket_name="GCP_BUCKET",
-        project_id="GCP_PROJECT_ID",
+        bucket_name_env_var="GCP_BUCKET",
+        project_id_env_var="GCP_PROJECT_ID",
     ):
         """
         Initialize the Preprocess class.
         It sets up the connection to Google Cloud services and the preprocessing pipeline.
 
         :param key_path_env_var: str, name of the environment variable that stores the path to the service account key.
-        :param bucket_name: str, name of the Google Cloud Storage bucket for saving/loading the preprocessor.
+        :param bucket_name_env_var: str, name of the environment variable that stores the Google Cloud Storage bucket name.
+        :param project_id_env_var: str, name of the environment variable that stores the GCP project ID.
         """
-        self.project_id = project_id
-        self.key_path = self._get_key_path(key_path_env_var)
-        self.bucket_name = bucket_name
+        load_dotenv()  # Load environment variables from .env file
+
+        self.key_path = self._get_env_variable(key_path_env_var)
+        self.bucket_name = self._get_env_variable(bucket_name_env_var)
+        self.project_id = self._get_env_variable(project_id_env_var)
+
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.key_path
+        print(f"Using service account key from: {self.key_path}")
+
         self.gcs_client = storage.Client()
-        self.bq_client = bigquery.Client(project_id)
+        self.bq_client = bigquery.Client(project=self.project_id)
         self.preprocessor = None
 
-    def _get_key_path(self, key_path_env_var):
+    def _get_env_variable(self, var_name):
         """
-        Get the service account key path. Check system environment first; if not found, load from .env file.
+        Get the environment variable value. Raise an error if not found.
 
-        :param key_path_env_var: str, environment variable name for the key path.
-        :return: str, the path to the service account key.
+        :param var_name: str, environment variable name.
+        :return: str, the value of the environment variable.
         """
-        key_path = os.getenv(key_path_env_var)
-        if not key_path:
-            load_dotenv()  # Load .env if key is not in system environment
-            key_path = os.getenv(key_path_env_var)
-
-        if not key_path:
+        value = os.getenv(var_name)
+        if not value:
             raise EnvironmentError(
-                f"Service account key not found in environment variable '{key_path_env_var}' or .env file."
+                f"Environment variable '{var_name}' not found. Please set it in your .env file or system environment."
             )
-
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
-        print(f"Using service account key from: {key_path}")
-        return key_path
+        return value
 
     def load_data(self, table_name) -> pd.DataFrame:
         """

@@ -16,23 +16,24 @@ class BqAnalysis:
         :param key_path_env_var: Environment variable name that stores the service account key path.
         :param project_id: GCP project ID.
         """
-        self._load_credentials(key_path_env_var)
-        self.project_id = project_id
-        self.bq_client = bigquery.Client(project=project_id)
+        self.key_path_env_var = self._get_env_variable(key_path_env_var)
+        self.project_id = self._get_env_variable(project_id)
+        self.bq_client = bigquery.Client(project=self.project_id)
         self.storage_client = storage.Client()
 
-    def _load_credentials(self, key_path_env_var):
+    def _get_env_variable(self, var_name):
         """
-        Load the service account key from an environment variable or a .env file.
+        Get the environment variable value. Raise an error if not found.
+
+        :param var_name: str, environment variable name.
+        :return: str, the value of the environment variable.
         """
-        load_dotenv()  # Load .env file if available
-        key_path = os.getenv(key_path_env_var)
-        if not key_path or not os.path.exists(key_path):
+        value = os.getenv(var_name)
+        if not value:
             raise EnvironmentError(
-                f"Service account key not found in environment variable '{key_path_env_var}' or .env file."
+                f"Environment variable '{var_name}' not found. Please set it in your .env file or system environment."
             )
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
-        print(f"Using service account key from: {key_path}")
+        return value
 
     def list_datasets(self):
         """
