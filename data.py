@@ -25,10 +25,10 @@ def load_credentials(key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS"):
     print(f"Using service account key from: {key_path}")
     
 # This function loads datas from the raw table in big query
-def load_data(key_path, table_name) -> pd.DataFrame:
-    load_credentials(key_path)
-    project_id = 'fleet-petal-448410-u6'
-    dataset_id = "titanic_dataset"
+def load_data(table_name) -> pd.DataFrame:
+    load_credentials()
+    project_id = os.getenv('GCP_PROJECT_ID')
+    dataset_id = os.getenv('BQ_DATASET')
     table = table_name
 
     client = bigquery.Client(project=project_id)
@@ -43,14 +43,15 @@ def load_data(key_path, table_name) -> pd.DataFrame:
         return df
     else: print(f'❌ No data in table {table}')
 
-"""
-this function use the loaded dataframe to preprocess data and save preprocessing to GCS if not already saved
-If the preprocessing is already saved it loads the file from GCS, otherwise it upload a new file to GCS
-It returns a tuple with X preprocessed and the target y
-"""
-def preproc_data(df) -> tuple:
 
-    bucket_name = "titanic_model_2025_02_07"
+def preproc_data(df, training=True):
+    """
+    this function use the loaded dataframe to preprocess data and save preprocessing to GCS if not already saved
+    If the preprocessing is already saved it loads the file from GCS, otherwise it upload a new file to GCS
+    It returns a tuple with X preprocessed and the target y
+    """
+    load_dotenv()
+    bucket_name = os.getenv('GCP_BUCKET')
     object_name = "preprocessor.pkl"
     local_file = "preprocessor.pkl"
 
@@ -58,7 +59,12 @@ def preproc_data(df) -> tuple:
     bucket = client.bucket(bucket_name)
     blob = bucket.blob(object_name)
 
-    X, y = df.drop('Transported', axis=1), df['Transported']
+    drop_cols = ["PassengerId", "Name", "Cabin"]
+    # Separate features and target only during training
+    if training:
+        X, y = df.drop('Transported', axis=1), df['Transported']
+    else:
+        X = df  # No target variable during prediction
 
     #writting the blob only if it doesn't exist
     if blob.exists() == False:
@@ -75,14 +81,13 @@ def preproc_data(df) -> tuple:
                     "imputation_mode",
                     SimpleImputer(missing_values=pd.NA,fill_value="missing", strategy="most_frequent"),
                 ),
-                ("onehot", OneHotEncoder(handle_unknown="error")),
+                ("onehot", OneHotEncoder(handle_unknown="ignore")),
             ]
         )
 
         num_cols = X.select_dtypes(include='number').columns
         cat_cols = X.select_dtypes(include=['object', 'boolean']).columns
         # Columns to be dropped
-        drop_cols = ["PassengerId", "Name", "Cabin"]
 
         preprocessor = ColumnTransformer(
             [
@@ -91,6 +96,8 @@ def preproc_data(df) -> tuple:
                 ("drop_cols", "drop", drop_cols)
             ]
         )
+
+        preprocessor.fit(X)
 
         with open("preprocessor.pkl", "wb") as f:
             pickle.dump(preprocessor, f)
@@ -104,13 +111,16 @@ def preproc_data(df) -> tuple:
         with open(local_file, "rb") as f:
             preprocessor = pickle.load(f)
         print(f'preprocessor loaded localy from GS: {bucket_name}/{object_name}')
-
-
-    X_processed = preprocessor.fit_transform(X) 
-    print(f'X processed and y separated ✅ ') 
-    return X_processed, y 
+    # Ensure missing columns (those in drop_cols) are in the input data
+    missing_cols = set(drop_cols) - set(X.columns)
+    for col in missing_cols:
+        X[col] = None
+    #Here we use fit_transform for training (when we want to keep mean, std and mode parameters)
+    #Otherwise we want to use transform when it is just for preprocessing datas
+    X_processed = preprocessor.fit_transform(X) if training else preprocessor.transform(X)
+    print('X processed and y separated ✅') if training else print('X processed ✅')
+    return (X_processed, y) if training else X_processed
 
 if __name__ == "__main__":
-    df = load_data(key_path="GOOGLE_APPLICATION_CREDENTIALS", table_name = 'RAW_train_data')
+    df = load_data(table_name = 'RAW_train_data')
     X_processed, y = preproc_data(df)
-

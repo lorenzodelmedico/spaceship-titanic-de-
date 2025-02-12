@@ -1,9 +1,12 @@
+import os
+
 from data import load_data, preproc_data
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import make_pipeline
 from google.cloud import storage 
 import pickle
+from dotenv import load_dotenv
 
 def train_model(X,y):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=42)
@@ -15,7 +18,8 @@ def train_model(X,y):
     return model
 
 def save_model(trained_model):
-    bucket_name = "titanic_model_2025_02_07"
+    load_dotenv()
+    bucket_name = os.getenv("GCP_BUCKET")
     object_name = "model.pkl"
     local_file = "model.pkl"
 
@@ -57,7 +61,7 @@ def load_model(GCS_model_name):
     
 
 if __name__ == "__main__":
-    df = load_data(key_path= "GOOGLE_APPLICATION_CREDENTIALS", table_name = 'RAW_train_data')
+    df = load_data(table_name = 'RAW_train_data')
     X_processed, y = preproc_data(df)
     trained_model = train_model(X_processed,y)
     save_model(trained_model)
