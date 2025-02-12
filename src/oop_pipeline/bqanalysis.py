@@ -3,7 +3,7 @@ from google.cloud import bigquery, storage
 from dotenv import load_dotenv
 
 class BqAnalysis:
-    def __init__(self, key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS", project_id="fleet-petal-448410-u6"):
+    def __init__(self, key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS", project_id=""):
         """
         Initialize the BqAnalysis class with credentials, BigQuery client, and Storage client.
 

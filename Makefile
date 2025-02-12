@@ -3,7 +3,7 @@
 # Project setup
 ########################################################################################################################
 
-init_env : init_virtualenv load_direnv install precommit_install
+init_env : init_virtualenv install precommit_install
 	@echo "✅ Environment initialized and ready to use 🔥"
 
 init_virtualenv :
@@ -42,8 +42,16 @@ install :
 # Training the model
 ########################################################################################################################
 
-#.PHONY: train
-#train:
-#	@echo "Training the model ..."
-#	python -m titanic.main
-#	@echo "✅ Model trained"
+.PHONY: preprocess analysis training
+
+PYTHON := python
+SCRIPT_PATH := src/oop_pipeline
+
+preprocess:
+	$(PYTHON) $(SCRIPT_PATH)/preprocess.py $(ARGS)
+
+analysis:
+	$(PYTHON) $(SCRIPT_PATH)/bqanalysis.py $(ARGS)
+
+training:
+	$(PYTHON) $(SCRIPT_PATH)/training.py $(ARGS)
