@@ -1,9 +1,15 @@
 import os
-from google.cloud import bigquery, storage
+
 from dotenv import load_dotenv
+from google.cloud import bigquery, storage
+
 
 class BqAnalysis:
-    def __init__(self, key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS", project_id=""):
+    def __init__(
+        self,
+        key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS",
+        project_id="GCP_PROJECT_ID",
+    ):
         """
         Initialize the BqAnalysis class with credentials, BigQuery client, and Storage client.
 
@@ -22,7 +28,9 @@ class BqAnalysis:
         load_dotenv()  # Load .env file if available
         key_path = os.getenv(key_path_env_var)
         if not key_path or not os.path.exists(key_path):
-            raise EnvironmentError(f"Service account key not found in environment variable '{key_path_env_var}' or .env file.")
+            raise EnvironmentError(
+                f"Service account key not found in environment variable '{key_path_env_var}' or .env file."
+            )
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
         print(f"Using service account key from: {key_path}")
 
@@ -41,7 +49,7 @@ class BqAnalysis:
     def list_tables(self, dataset_id):
         """
         List all tables in the specified dataset.
-        
+
         :param dataset_id: Name of the dataset.
         """
         tables = list(self.bq_client.list_tables(dataset_id))
@@ -55,7 +63,7 @@ class BqAnalysis:
     def get_table_info(self, dataset_id, table_id):
         """
         Get detailed information about a specific table.
-        
+
         :param dataset_id: Name of the dataset.
         :param table_id: Name of the table.
         """
@@ -71,7 +79,7 @@ class BqAnalysis:
     def list_pkl_files_in_bucket(self, bucket_name):
         """
         List all .pkl files saved in the specified GCS bucket.
-        
+
         :param bucket_name: Name of the GCS bucket.
         """
         bucket = self.storage_client.bucket(bucket_name)
@@ -84,20 +92,21 @@ class BqAnalysis:
         else:
             print(f"\nNo .pkl files found in bucket '{bucket_name}'.")
 
+
 if __name__ == "__main__":
     # Initialize the BqAnalysis class (ensure your .env or system environment has the GCP_KEY_PATH variable)
     analysis = BqAnalysis(key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS")
-    
+
     # List datasets
     analysis.list_datasets()
-    
+
     # List tables in a specific dataset
     dataset = "titanic_dataset"
     analysis.list_tables(dataset)
-    
+
     # Get information about a specific table
     analysis.get_table_info(dataset, "RAW_train_data")
-    
+
     # List .pkl files in a specified bucket (for example, where model files are saved)
     bucket = "titanic_model_2025_02_07"
     analysis.list_pkl_files_in_bucket(bucket)

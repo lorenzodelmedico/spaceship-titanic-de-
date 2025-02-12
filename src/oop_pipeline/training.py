@@ -1,21 +1,24 @@
 import os
 import pickle
-from google.cloud import bigquery, storage
+
 from dotenv import load_dotenv
+from google.cloud import bigquery, storage
+
 from .modelconfig import MODELS, ModelConfig, ModelTrainer
+
 
 class Training:
     def __init__(
         self,
         key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS",
-        project_id="fleet-petal-448410-u6",
-        dataset_id="titanic_dataset",
+        project_id="GCP_PROJECT_ID",
+        dataset_id="BQ_DATASET",
         preprocessed_table="preprocessed_data",
-        bucket_name="titanic_model_2025_02_07"
+        bucket_name="GCP_BUCKET",
     ):
         """
         Initialize the Training class.
-        
+
         :param key_path_env_var: Environment variable that stores the service account key path.
         :param project_id: GCP project ID.
         :param dataset_id: BigQuery dataset containing the preprocessed table.
@@ -45,10 +48,12 @@ class Training:
     def get_preprocessed_data(self):
         """
         Query the preprocessed data table from BigQuery and split into features (X) and target (y).
-        
+
         :return: tuple (X, y) as pandas DataFrames.
         """
-        table_full_name = f"{self.project_id}.{self.dataset_id}.{self.preprocessed_table}"
+        table_full_name = (
+            f"{self.project_id}.{self.dataset_id}.{self.preprocessed_table}"
+        )
         query = f"SELECT * FROM `{table_full_name}`"
         query_job = self.bq_client.query(query)
         df = query_job.result().to_dataframe()
@@ -64,7 +69,7 @@ class Training:
         """
         Split the data, instantiate the model configuration and trainer,
         train the model, and report accuracy.
-        
+
         :param X: Features DataFrame.
         :param y: Target Series.
         :param model_key: The key used to select the model configuration (default 'rf').
@@ -72,26 +77,26 @@ class Training:
         """
         # Create the model configuration based on the provided model_key.
         model_config = ModelConfig(MODELS[model_key])
-        
+
         # Instantiate the trainer using the configuration.
         trainer = ModelTrainer(model_config)
-        
+
         # Train the model. Note: ModelTrainer.train_model() internally splits the data,
         # trains the pipeline, and prints accuracy.
         self.model = trainer.train_model(X, y)
-        
+
         return self.model
 
     def save_model(self, model_key="rf"):
         """
         Save the trained model to GCS with versioning.
-        
+
         The versioning scheme for a given model key:
           - If no model exists, save as "model_{model_key}.pkl".
           - If "model_{model_key}.pkl" exists, then save the new model as "model_{model_key}.v01.pkl".
           - Otherwise, if versioned files exist (e.g., model_{model_key}.v01.pkl), the new model
             will be named with an incremented version.
-        
+
         :param model_key: A string identifier for the model (e.g., "rf").
         :return: The new model file name.
         """
@@ -122,7 +127,7 @@ class Training:
         else:
             new_version = max(version_numbers) + 1
             new_model_name = f"model_{model_key}.v{new_version:02d}.pkl"
-        
+
         # Save locally
         local_file = new_model_name
         with open(local_file, "wb") as f:
@@ -187,9 +192,10 @@ class Training:
         print(f"Loaded model from gs://{self.bucket_name}/{latest_blob_name}")
         return self.model
 
+
 if __name__ == "__main__":
     trainer = Training(key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS")
-    
+
     # Query preprocessed data from BigQuery
     X, y = trainer.get_preprocessed_data()
     train_model_key = "rf"
