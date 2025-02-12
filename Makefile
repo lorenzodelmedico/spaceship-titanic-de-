@@ -3,7 +3,7 @@
 # Project setup
 ########################################################################################################################
 
-init_env : init_virtualenv install precommit_install
+init_env : init_virtualenv load_direnv install precommit_install
 	@echo "✅ Environment initialized and ready to use 🔥"
 
 init_virtualenv :
@@ -18,10 +18,10 @@ init_virtualenv :
 	@pyenv local titanic-env
 	@echo "✅ Virtualenv 'titanic-env' activated"
 
-# load_direnv:
-# 	@echo "Loading direnv ..."
-# 	@direnv allow
-# 	@echo "✅ Direnv loaded"
+load_direnv:
+	@echo "Loading direnv ..."
+	@direnv allow
+	@echo "✅ Direnv loaded"
 
 precommit_install:
 	@echo "Installing pre-commit hooks ..."

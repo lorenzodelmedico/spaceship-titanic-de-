@@ -3,7 +3,6 @@ import os
 import numpy as np
 import pandas as pd
 from category_encoders import HashingEncoder
-from dotenv import load_dotenv  # To handle .env file loading
 from getenv import get_env_variable
 from google.cloud import bigquery, storage
 from sklearn.compose import ColumnTransformer
@@ -27,7 +26,6 @@ class Preprocess:
         :param bucket_name_env_var: str, name of the environment variable that stores the Google Cloud Storage bucket name.
         :param project_id_env_var: str, name of the environment variable that stores the GCP project ID.
         """
-        load_dotenv()  # Load environment variables from .env file
 
         self.key_path = get_env_variable(key_path_env_var)
         self.bucket_name = get_env_variable(bucket_name_env_var)

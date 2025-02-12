@@ -1,4 +1,3 @@
-from dotenv import load_dotenv
 from getenv import get_env_variable
 from google.cloud import bigquery, storage
 
@@ -15,7 +14,6 @@ class BqAnalysis:
         :param key_path_env_var: Environment variable name that stores the service account key path.
         :param project_id: GCP project ID.
         """
-        load_dotenv()
         self.key_path_env_var = get_env_variable(key_path_env_var)
         self.project_id = get_env_variable(project_id)
         self.bq_client = bigquery.Client(project=self.project_id)

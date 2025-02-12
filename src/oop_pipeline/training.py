@@ -1,7 +1,6 @@
 import argparse
 import pickle
 
-from dotenv import load_dotenv
 from getenv import get_env_variable
 from google.cloud import bigquery, storage
 from modelconfig import MODELS, ModelConfig, ModelTrainer
@@ -28,7 +27,6 @@ class Training:
         :param preprocessed_table: Name of the preprocessed BigQuery table.
         :param bucket_name: GCS bucket where the trained model will be saved.
         """
-        load_dotenv()
         self.key_path_env_var = get_env_variable(key_path_env_var)
         self.project_id = get_env_variable(project_id)
         self.dataset_id = get_env_variable(dataset_id)
