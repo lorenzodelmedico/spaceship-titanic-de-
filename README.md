@@ -31,6 +31,11 @@ make preprocess
 make train
 ```
 
+2.bis replace rf with any model key you want to use and that's referenced in our application. -help for more info
+```bash
+make train make ARGS="--model_key=rf"
+```
+
 3 (option).
 ```bash
 make analysis

@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from category_encoders import HashingEncoder
 from dotenv import load_dotenv  # To handle .env file loading
+from getenv import get_env_variable
 from google.cloud import bigquery, storage
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -28,9 +29,9 @@ class Preprocess:
         """
         load_dotenv()  # Load environment variables from .env file
 
-        self.key_path = self._get_env_variable(key_path_env_var)
-        self.bucket_name = self._get_env_variable(bucket_name_env_var)
-        self.project_id = self._get_env_variable(project_id_env_var)
+        self.key_path = get_env_variable(key_path_env_var)
+        self.bucket_name = get_env_variable(bucket_name_env_var)
+        self.project_id = get_env_variable(project_id_env_var)
 
         os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = self.key_path
         print(f"Using service account key from: {self.key_path}")
@@ -38,20 +39,6 @@ class Preprocess:
         self.gcs_client = storage.Client()
         self.bq_client = bigquery.Client(project=self.project_id)
         self.preprocessor = None
-
-    def _get_env_variable(self, var_name):
-        """
-        Get the environment variable value. Raise an error if not found.
-
-        :param var_name: str, environment variable name.
-        :return: str, the value of the environment variable.
-        """
-        value = os.getenv(var_name)
-        if not value:
-            raise EnvironmentError(
-                f"Environment variable '{var_name}' not found. Please set it in your .env file or system environment."
-            )
-        return value
 
     def load_data(self, table_name) -> pd.DataFrame:
         """

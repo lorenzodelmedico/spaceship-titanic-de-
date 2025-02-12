@@ -1,10 +1,13 @@
-import os
+import argparse
 import pickle
 
 from dotenv import load_dotenv
+from getenv import get_env_variable
 from google.cloud import bigquery, storage
+from modelconfig import MODELS, ModelConfig, ModelTrainer
 
-from .modelconfig import MODELS, ModelConfig, ModelTrainer
+# Create a string representation of the MODELS dictionary
+models_description = f"Available models: {', '.join(MODELS.keys())}"
 
 
 class Training:
@@ -25,25 +28,15 @@ class Training:
         :param preprocessed_table: Name of the preprocessed BigQuery table.
         :param bucket_name: GCS bucket where the trained model will be saved.
         """
-        self._load_credentials(key_path_env_var)
-        self.project_id = project_id
-        self.dataset_id = dataset_id
+        load_dotenv()
+        self.key_path_env_var = get_env_variable(key_path_env_var)
+        self.project_id = get_env_variable(project_id)
+        self.dataset_id = get_env_variable(dataset_id)
+        self.bucket_name = get_env_variable(bucket_name)
         self.preprocessed_table = preprocessed_table
-        self.bucket_name = bucket_name
-        self.bq_client = bigquery.Client(project=project_id)
+        self.bq_client = bigquery.Client(project=self.project_id)
         self.storage_client = storage.Client()
         self.model = None
-
-    def _load_credentials(self, key_path_env_var):
-        """Load service account key using dotenv."""
-        load_dotenv()  # Load .env file if available
-        key_path = os.getenv(key_path_env_var)
-        if not key_path or not os.path.exists(key_path):
-            raise EnvironmentError(
-                f"Service account key not found using '{key_path_env_var}'. Check your environment or .env file."
-            )
-        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = key_path
-        print(f"Using service account key from: {key_path}")
 
     def get_preprocessed_data(self):
         """
@@ -194,16 +187,25 @@ class Training:
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Train a machine learning model.")
+    parser.add_argument(
+        "--train_model_key",
+        type=str,
+        default="rf",
+        help=f"The key representing the model to train. {models_description}",
+    )
+    args = parser.parse_args()
+
     trainer = Training(key_path_env_var="GOOGLE_APPLICATION_CREDENTIALS")
 
     # Query preprocessed data from BigQuery
     X, y = trainer.get_preprocessed_data()
-    train_model_key = "rf"
+
     if not X.empty:
         # Train the model using the queried data
-        trainer.train_model(X, y, train_model_key)
+        trainer.train_model(X, y, args.train_model_key)
         # Save the model with versioning using the model key
-        new_model_name = trainer.save_model(model_key=train_model_key)
+        new_model_name = trainer.save_model(model_key=args.train_model_key)
         print(f"Model saved as: {new_model_name}")
         # Load the most recent model for the given model key
-        loaded_model = trainer.load_model(model_key=train_model_key)
+        loaded_model = trainer.load_model(model_key=args.train_model_key)

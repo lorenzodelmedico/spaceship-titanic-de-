@@ -1,6 +1,5 @@
-import os
-
 from dotenv import load_dotenv
+from getenv import get_env_variable
 from google.cloud import bigquery, storage
 
 
@@ -16,24 +15,11 @@ class BqAnalysis:
         :param key_path_env_var: Environment variable name that stores the service account key path.
         :param project_id: GCP project ID.
         """
-        self.key_path_env_var = self._get_env_variable(key_path_env_var)
-        self.project_id = self._get_env_variable(project_id)
+        load_dotenv()
+        self.key_path_env_var = get_env_variable(key_path_env_var)
+        self.project_id = get_env_variable(project_id)
         self.bq_client = bigquery.Client(project=self.project_id)
         self.storage_client = storage.Client()
-
-    def _get_env_variable(self, var_name):
-        """
-        Get the environment variable value. Raise an error if not found.
-
-        :param var_name: str, environment variable name.
-        :return: str, the value of the environment variable.
-        """
-        value = os.getenv(var_name)
-        if not value:
-            raise EnvironmentError(
-                f"Environment variable '{var_name}' not found. Please set it in your .env file or system environment."
-            )
-        return value
 
     def list_datasets(self):
         """
