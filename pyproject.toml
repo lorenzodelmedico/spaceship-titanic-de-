@@ -6,8 +6,8 @@ build-backend = "setuptools.build_meta"
 name = "titanic-mieuxqAloys"
 version = "0.1.0"
 description = "A package for the Space Titanic project - better than Aloys version, trust us"
-authors = [{ name = "Lorenzo del medico", email = "lorenzodelmedico@gmail.com" }, 
-{name = "Hugo Decourcelle", email = "hugodecourcelle@gmail.com"}, {name = "abdelkader yahyaoui", email = "yahyaouiabdelkader85@gmail.com"}]
+authors = [{ name = "Lorenzo del medico" },
+{name = "Hugo Decourcelle"}, {name = "abdelkader yahyaoui"}]
 requires-python = ">=3.10"
 dynamic = ["dependencies"]
 [tool.setuptools.dynamic]
