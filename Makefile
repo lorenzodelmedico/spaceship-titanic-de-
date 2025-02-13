@@ -14,7 +14,7 @@ init_virtualenv :
 		echo "Virtualenv 'titanic-env' does not exist"; \
 		echo "Creating virtualenv 'titanic-env' ..."; \
 		pyenv virtualenv 3.10.12 titanic-env; \
-	fi
+
 	@pyenv local titanic-env
 	@echo "✅ Virtualenv 'titanic-env' activated"
 
